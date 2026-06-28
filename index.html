@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔨 巨型解压锤 - 砸掉不开心</title>
+    <style>
+        body {
+            margin: 0;
+            background: #111;
+            overflow: hidden;
+            font-family: sans-serif;
+            user-select: none;
+        }
+
+        /* 开始菜单样式 */
+        #menu {
+            position: fixed;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%,-50%);
+            background: #222;
+            padding: 35px;
+            border-radius: 18px;
+            width: 360px;
+            text-align: center;
+            color: white;
+            box-shadow: 0 0 25px red;
+            z-index: 10;
+        }
+
+        #menu input {
+            width: 90%;
+            margin: 8px;
+            padding: 12px;
+            font-size: 18px;
+            border-radius: 8px;
+            border: none;
+            box-sizing: border-box;
+        }
+
+        #menu button {
+            padding: 14px 30px;
+            font-size: 22px;
+            background: #ff3030;
+            color: white;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        #menu button:hover {
+            background: #ff6b6b;
+            transform: scale(1.05);
+        }
+
+        /* 压力目标样式 */
+        .target-node {
+            position: absolute;
+            background: #333;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            cursor: pointer; 
+            border: 2px solid #555;
+            font-weight: bold;
+            font-size: 20px;
+            white-space: nowrap;
+            transition: transform 0.1s;
+            animation: floatUpDown 3s ease-in-out infinite alternate;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+            z-index: 5;
+        }
+
+        .target-node:hover {
+            border-color: #ff3030;
+            transform: scale(1.1);
+        }
+
+        /* 漂浮动画 */
+        @keyframes floatUpDown {
+            0% { transform: translateY(0px); }
+            100% { transform: translateY(-20px); }
+        }
+
+        /* 得分板样式 */
+        #score-board {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            color: #888;
+            font-size: 24px;
+            z-index: 5;
+        }
+
+        /* 胜利提示 */
+        #win-msg {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%,-50%);
+            color: #ff3030;
+            font-size: 50px;
+            font-weight: bold;
+            display: none;
+            animation: popIn 0.5s forwards;
+            text-shadow: 0 0 10px black;
+            z-index: 10;
+        }
+
+        @keyframes popIn {
+            0% { transform: translate(-50%,-50%) scale(0); opacity: 0; }
+            80% { transform: translate(-50%,-50%) scale(1.2); opacity: 1; }
+            100% { transform: translate(-50%,-50%) scale(1); opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="menu">
+        <h1>🔨 巨型解压锤</h1>
+        <p>输入今天想砸掉的5个压力</p>
+        <input id="t1" placeholder="① 例如：老板">
+        <input id="t2" placeholder="② 例如：房租">
+        <input id="t3" placeholder="③ 例如：Deadline">
+        <input id="t4" placeholder="④ 例如：焦虑">
+        <input id="t5" placeholder="⑤ 例如：考试">
+        <br><br>
+        <button id="startBtn">开始解压</button>
+    </div>
+
+    <div id="score-board">已消灭压力：<span id="score">0</span>/5</div>
+    <div id="win-msg">压力全部粉碎！🎉</div>
+
+    <script>
+        // ========= 音频上下文初始化 =========
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        let audioCtx;
+        let master;
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new AudioContextClass();
+                master = audioCtx.createGain();
+                master.gain.value = 0.9;
+                master.connect(audioCtx.destination);
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }        // ========= 基础打击音效系统 =========
+        function heavyHammer(){
+            initAudio();
+            hitBass();
+            hitMetal();
+            hitImpact();
+        }
+
+        function hitBass(){
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+
+            osc.type = "sawtooth";
+            osc.frequency.setValueAtTime(80, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(30, audioCtx.currentTime + .45);
+
+            gain.gain.setValueAtTime(.8, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(.0001, audioCtx.currentTime + .45);
+
+            osc.connect(gain);
+            gain.connect(master);
+
+            osc.start();
+            osc.stop(audioCtx.currentTime + .45);
+        }
+
+        function hitMetal(){
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+
+            osc.type = "square";
+            osc.frequency.value = 950;
+            gain.gain.value = .35;
+
+            osc.connect(gain);
+            gain.connect(master);
+
+            osc.start();
+            gain.gain.exponentialRampToValueAtTime(.0001, audioCtx.currentTime + .15);
+            osc.stop(audioCtx.currentTime + .15);
+        }
+
+        function hitImpact(){
+            const buffer = audioCtx.createBuffer(1, audioCtx.sampleRate * .3, audioCtx.sampleRate);
+            const data = buffer.getChannelData(0);
+
+            for(let i = 0; i < data.length; i++){
+                data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / data.length, 2);
+            }
+
+            const noise = audioCtx.createBufferSource();
+            noise.buffer = buffer;
+
+            const gain = audioCtx.createGain();
+            gain.gain.value = .45;
+
+            noise.connect(gain);
+            gain.connect(master);
+
+            noise.start();
+        }
+
+        function superHit(){
+            heavyHammer();
+            setTimeout(heavyHammer, 30);
+            setTimeout(heavyHammer, 70);
+
+            if(navigator.vibrate){
+                navigator.vibrate([80, 40, 80]);
+            }
+        }
+
+        // ========= 终极震撼音效系统 (Ultimate Hammer Audio Part 2) =========
+        function megaBoom(){
+            initAudio();
+            deepWave();
+            shockNoise();
+            ringEcho();
+            comboBell();
+        }
+
+        function deepWave(){
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+
+            osc.type = "triangle";
+            osc.frequency.setValueAtTime(120, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(18, audioCtx.currentTime + .9);
+
+            gain.gain.value = .7;
+            gain.gain.exponentialRampToValueAtTime(.0001, audioCtx.currentTime + .9);
+
+            osc.connect(gain);
+            gain.connect(master);
+
+            osc.start();
+            osc.stop(audioCtx.currentTime + .9);
+        }
+
+        function shockNoise(){
+            const buffer = audioCtx.createBuffer(1, audioCtx.sampleRate * .6, audioCtx.sampleRate);
+            const data = buffer.getChannelData(0);
+
+            for(let i = 0; i < data.length; i++){
+                data[i] = (Math.random() * 2 - 1) * (1 - i / data.length);
+            }
+
+            const src = audioCtx.createBufferSource();
+            src.buffer = buffer;
+
+            const gain = audioCtx.createGain();
+            gain.gain.value = .35;
+
+            src.connect(gain);
+            gain.connect(master);
+            
+            src.start();
+        }
+
+        function ringEcho(){
+            for(let i = 0; i < 4; i++){
+                setTimeout(()=>{
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+
+                    osc.type = "sine";
+                    osc.frequency.value = 700 - i * 120;
+                    
+                    gain.gain.value = Math.max(0.01, .18 - i * .04);
+
+                    osc.connect(gain);
+                    gain.connect(master);
+
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 0.1);
+                }, i * 80);
+            }
+        }
+
+        function comboBell(){
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+
+            osc.type = "sine";
+            osc.frequency.value = 1200;
+
+            gain.gain.setValueAtTime(.4, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(.0001, audioCtx.currentTime + .3);
+
+            osc.connect(gain);
+            gain.connect(master);
+
+            osc.start();
+            osc.stop(audioCtx.currentTime + .3);
+        }        // ========= 炫酷爆炸粒子系统 (Particle System) =========
+        const particles = [];
+        
+        function spawnParticles(x, y){
+            for(let i = 0; i < 80; i++){
+                particles.push({
+                    x: x,
+                    y: y,
+                    vx: (Math.random() - 0.5) * 18,
+                    vy: (Math.random() - 0.5) * 18 - 4,
+                    life: 50 + Math.random() * 30,
+                    size: 4 + Math.random() * 8,
+                    rot: Math.random() * 360,
+                    spin: (Math.random() - 0.5) * 20,
+                    color: [
+                        "#ffffff",
+                        "#ffcc00",
+                        "#ff6600",
+                        "#ff2222",
+                        "#aaaaaa"
+                    ][Math.floor(Math.random() * 5)]
+                });
+            }
+        }
+
+        const canvas = document.createElement("canvas");
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        canvas.style.position = "fixed";
+        canvas.style.left = "0";
+        canvas.style.top = "0";
+        canvas.style.pointerEvents = "none";
+        canvas.style.zIndex = "99997";
+        document.body.appendChild(canvas);
+
+        const ctx = canvas.getContext("2d");
+
+        window.addEventListener("resize",()=>{
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        });
+
+        function updateParticles(){
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            for(let i = particles.length - 1; i >= 0; i--){
+                const p = particles[i];
+
+                p.x += p.vx;
+                p.y += p.vy;
+                p.vy += 0.35;
+                p.vx *= 0.99;
+                p.life--;
+                p.rot += p.spin;
+
+                if (p.life <= 0) {
+                    particles.splice(i, 1);
+                    continue;
+                }
+
+                ctx.save();
+                ctx.translate(p.x, p.y);
+                ctx.rotate(p.rot * Math.PI / 180);
+                ctx.globalAlpha = Math.max(0, p.life / 80);
+                
+                ctx.fillStyle = p.color;
+                ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size);
+                ctx.restore();
+            }
+            
+            if (particles.length > 0 || document.getElementById("menu").style.display === "none") {
+                requestAnimationFrame(updateParticles);
+            }
+        }
+        
+        requestAnimationFrame(updateParticles);
+
+        function impactRing(x, y){
+            const ring = document.createElement("div");
+            ring.style.position = "fixed";
+            ring.style.left = (x - 20) + "px";
+            ring.style.top = (y - 20) + "px";
+            ring.style.width = "40px";
+            ring.style.height = "40px";
+            ring.style.border = "6px solid white";
+            ring.style.borderRadius = "50%";
+            ring.style.pointerEvents = "none";
+            ring.style.zIndex = "99998";
+
+            document.body.appendChild(ring);
+
+            ring.animate([
+                { transform:"scale(.2)", opacity:1 },
+                { transform:"scale(8)", opacity:0 }
+            ], {
+                duration: 320,
+                easing: "ease-out"
+            });
+
+            setTimeout(()=>{
+                ring.remove();
+            }, 320);
+        }        // ========= 巨型锤子系统与逻辑集成 =========
+        const targets = [];
+        let score = 0;
+
+        // 创建巨型锤子 DOM
+        const hammer = document.createElement("div");
+        hammer.innerHTML = "🔨";
+        hammer.style.position = "fixed";
+        hammer.style.left = "0";
+        hammer.style.top = "0";
+        hammer.style.fontSize = "120px";
+        hammer.style.pointerEvents = "none";
+        hammer.style.zIndex = "99999";
+        hammer.style.transformOrigin = "80% 80%";
+        hammer.style.transition = "transform .08s linear";
+        document.body.appendChild(hammer);
+        hammer.style.display = "none";
+
+        let mouseX = window.innerWidth / 2;
+        let mouseY = window.innerHeight / 2;
+
+        document.addEventListener("mousemove", e => {
+            mouseX = e.clientX;
+            mouseY = e.clientY;
+            hammer.style.left = (mouseX - 70) + "px";
+            hammer.style.top = (mouseY - 80) + "px";
+        });
+
+        let swinging = false;
+
+        document.addEventListener("mousedown", () => {
+            if (document.getElementById("menu").style.display === "none") {
+                if(swinging) return;
+                swinging = true;
+                hammerStrike();
+            }
+        });
+
+        function hammerStrike(){
+            hammer.animate([
+                { transform:"rotate(-35deg) scale(1)" },
+                { transform:"rotate(35deg) scale(1.15)" },
+                { transform:"rotate(70deg) scale(.95)" },
+                { transform:"rotate(0deg) scale(1)" }
+            ], {
+                duration: 220,
+                easing: "ease-in"
+            });
+
+            superHit();
+            megaBoom();
+            
+            // 触发震波与粒子爆炸
+            impactRing(mouseX, mouseY);
+            spawnParticles(mouseX, mouseY);
+
+            setTimeout(()=>{
+                swinging = false;
+            }, 220);
+        }
+
+        // 绑定开始按钮事件
+        document.getElementById("startBtn").onclick = function(){
+            targets.length = 0;
+            for(let i = 1; i <= 5; i++){
+                const text = document.getElementById("t"+i).value.trim();
+                if(text){
+                    targets.push(text);
+                }
+            }
+            if(targets.length === 0){
+                alert("至少输入一个目标！");
+                return;
+            }
+            
+            initAudio();
+
+            document.getElementById("menu").style.display = "none";
+            hammer.style.display = "block";
+            startGame();
+        };
+
+        function startGame() {
+            const gameContainer = document.createElement("div");
+            gameContainer.id = "game-container";
+            document.body.appendChild(gameContainer);
+            
+            // 在随机位置生成填入的压力目标
+            targets.forEach((text) => {
+                const node = document.createElement("div");
+                node.className = "target-node";
+                node.innerText = text;
+
+                const randomX = window.innerWidth * 0.1 + Math.random() * (window.innerWidth * 0.7);
+                const randomY = window.innerHeight * 0.2 + Math.random() * (window.innerHeight * 0.6);
+                
+                node.style.left = `${randomX}px`;
+                node.style.top = `${randomY}px`;
+
+                node.onclick = function(e) {
+                    e.stopPropagation(); 
+
+                    hammerStrike();
+
+                    node.style.transition = "all 0.3s";
+                    node.style.transform = "scale(2) rotate(15deg)";
+                    node.style.opacity = "0";
+                    
+                    setTimeout(() => {
+                        node.remove();
+                        score++;
+                        document.getElementById("score").innerText = score;
+                        
+                        if (score === targets.length) {
+                            document.getElementById("win-msg").style.display = "block";
+                        }
+                    }, 300);
+                };
+
+                gameContainer.appendChild(node);
+            });
+        }
+    </script>
+</body>
+</html>
